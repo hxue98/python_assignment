@@ -13,6 +13,41 @@ if __name__ == '__main__':
 
 @app.get('/api/financial_data')
 def getFinancialData():
+    '''
+    Get financial data for symbol between start date and end date.
+    If start_date is not provided, all data before end_date will be returned.
+    If end_date is not provided, all data before start_date will be returned.
+    If neither start_date and end_date are provided, we return all data for the symbol.
+    If symbol is not provided, all symbols in the DB will be returned.
+
+        Parameters:
+            symbol (str): stock identifier
+            start_date (str): starting date in format %Y-%m-%d
+            end_date(str): ending date in format %Y-%m-%d
+            limit(int): limit how many data in each page
+            page(int): page number for data
+
+        Returns:
+            response: {
+                data: [
+                    {
+                        "symbol": "IBM",
+                        "date": "2023-01-05",
+                        "open_price": "153.08",
+                        "close_price": "154.52",
+                        "volume": "62199013",
+                    }...
+                ],
+                pagination: {
+                    "count": 20,
+                    "page": 2,
+                    "limit": 3,
+                    "pages": 7
+                },
+                info: {error: 'error message if any'}
+            }
+
+    '''
     # endpoint params
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
@@ -82,6 +117,27 @@ def getFinancialData():
 
 @app.get('/api/statistics')
 def getStatistics():
+    '''
+    Get statistics for a symbol between start date and end date.
+
+            Parameters:
+                    symbol (str): stock identifier
+                    start_date (str): starting date in format %Y-%m-%d
+                    end_date(str): ending date in format %Y-%m-%d
+
+            Returns:
+                response: {
+                    data: {
+                        "symbol": "IBM",
+                        "start_date": "2023-01-05",
+                        "end_date": "2023-01-10",
+                        "average_daily_open_price": 123.45,
+                        "average_daily_close_price": 234.56,
+                        "average_daily_volume": 1000000
+                    }
+                    info: {error: 'error message if any'}
+                }
+    '''
     # endpoint params
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')

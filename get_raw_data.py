@@ -6,7 +6,14 @@ import mysql.connector
 import json
 import dotenv
 
-def getStockData(symbol: str, numDays: int) -> None:
+def getAndInsertStockData(symbol: str, numDays: int):
+    '''
+    Get stock data for symbol in numDays and calls insertData to add these data into DB
+
+            Parameters:
+                    symbol (str): stock identifier
+                    numDays (int): number of days to get data for the stock
+    '''
     if not symbol or symbol == "" or numDays <= 0:
         print('Invalid input')
         return
@@ -51,7 +58,17 @@ def getStockData(symbol: str, numDays: int) -> None:
     except Exception as err:
         print(f'Error encountered when inserting data: {err}')
 
-def insertData(symbol: str, financialData: list) -> Exception:
+def insertData(symbol: str, financialData: list):
+    '''
+    Insert data into DB
+
+            Parameters:
+                    symbol (str): stock identifier
+                    financialData (list): list of financial data associated to the stock symbol
+
+            Raises:
+                    mysql.connector.Error: if DB interaction fails
+    '''
     try:
         # use REPLACE instead of INSERT to make sure we do not insert duplicate entries
         cursor = dbConn.cursor()
@@ -63,10 +80,6 @@ def insertData(symbol: str, financialData: list) -> Exception:
         print(f'{len(financialData)} entries inserted for symbol {symbol}')
     except mysql.connector.Error as err:
         raise err
-    finally:
-        cursor.close()
-        dbConn.close()
-
 
 # scirpt
 dotenv.load_dotenv()
@@ -76,5 +89,6 @@ dbConn = mysql.connector.connect(
     database = os.getenv('DB_NAME'),
     password = os.getenv('DB_PASSWORD')
 )
-getStockData("IBM", 14)
-getStockData("AAPL", 14)
+getAndInsertStockData("IBM", 14)
+getAndInsertStockData("AAPL", 14)
+dbConn.close()

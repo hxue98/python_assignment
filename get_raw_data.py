@@ -66,10 +66,9 @@ def insertData(symbol: str, financialData: list) -> Exception:
         # use REPLACE instead of INSERT to make sure we do not insert duplicate entries
         mycursor = dbConn.cursor()
         for data in financialData:
-            dataValues = list(data.values())
+            dataValues = tuple(data.values())
             sql = "REPLACE INTO financial_data (symbol, date, open_price, close_price, volume) VALUES (%s, %s, %s, %s, %s)"
-            val = (dataValues[0], dataValues[1], dataValues[2], dataValues[3], dataValues[4])
-            mycursor.execute(sql, val)
+            mycursor.execute(sql, dataValues)
         dbConn.commit()
         print(f'{len(financialData)} entries inserted for symbol {symbol}')
     except mysql.connector.Error as err:

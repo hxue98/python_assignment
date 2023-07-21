@@ -1,23 +1,15 @@
 import math
-import time
 from flask import Flask, request
 import mysql.connector
 import re
+import os
 
-#internal imports
-import constants
+DATE_PATTERN = r'^(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|1\d|2\d|3[01])$'
 
 app = Flask(__name__)
 
-dbConn = mysql.connector.connect(
-    host = constants.DBHOST,
-    user = constants.DBUSER,
-    database = constants.DBNAME,
-    password = constants.DBPASSWORD
-)
-
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=5000)
 
 @app.get('/api/financial_data')
 def getFinancialData():
@@ -29,9 +21,9 @@ def getFinancialData():
     page = request.args.get('page')
 
     # input validation
-    if start_date and not re.match(constants.DATE_PATTERN, start_date):
+    if start_date and not re.match(DATE_PATTERN, start_date):
         response['info']['error'] = 'invalid start_date'
-    if end_date and not re.match(constants.DATE_PATTERN, end_date):
+    if end_date and not re.match(DATE_PATTERN, end_date):
         response['info']['error'] = 'invalid end_date'
     limit = 5 if not limit or not limit.isdigit() else int(limit)
     page = 0 if not page or not page.isdigit() else int(page)
@@ -48,33 +40,43 @@ def getFinancialData():
     }
 
     # fetch data from DB
-    cursor = dbConn.cursor()
-    # build and exec sql query
-    sql = '''
-        SELECT symbol, date, open_price, close_price, volume, COUNT(*) OVER()
-        FROM financial_data
-        WHERE (%s IS NULL OR symbol = %s) AND (%s IS NULL OR date >= %s) AND (%s IS NULL OR date <= %s)
-        ORDER BY date
-        LIMIT %s
-        OFFSET %s
-    '''
-    cursor.execute(sql, (symbol, symbol, start_date, start_date, end_date, end_date, limit, page * limit))
-    result = cursor.fetchall()
-    for r in result:
-        response['data'].append({
-            "symbol": r[0],
-            'date': r[1].isoformat(),
-            "open_price": r[2],
-            "close_price": r[3],
-            "volume": str(r[4])
-        })
+    try:
+        dbConn = mysql.connector.connect(
+            host = os.getenv('DB_HOST'),
+            user = os.getenv('DB_USER'),
+            database = os.getenv('DB_NAME'),
+            password = os.getenv('DB_PASSWORD')
+        )
 
-    # populate pagination
-    if cursor.rowcount > 0:
-        response['pagination']['count'] = result[0][5]
-        response['pagination']['pages'] = math.ceil(response['pagination']['count'] / limit) # round up to account for last page
-    else:
-        response['info']['error'] = f'No data found for symbol {symbol} from {start_date} to {end_date}'
+        cursor = dbConn.cursor()
+        # build and exec sql query
+        sql = '''
+            SELECT symbol, date, open_price, close_price, volume, COUNT(*) OVER()
+            FROM financial_data
+            WHERE (%s IS NULL OR symbol = %s) AND (%s IS NULL OR date >= %s) AND (%s IS NULL OR date <= %s)
+            ORDER BY date
+            LIMIT %s
+            OFFSET %s
+        '''
+        cursor.execute(sql, (symbol, symbol, start_date, start_date, end_date, end_date, limit, page * limit))
+        result = cursor.fetchall()
+        for r in result:
+            response['data'].append({
+                "symbol": r[0],
+                'date': r[1].isoformat(),
+                "open_price": r[2],
+                "close_price": r[3],
+                "volume": str(r[4])
+            })
+
+        # populate pagination
+        if cursor.rowcount > 0:
+            response['pagination']['count'] = result[0][5]
+            response['pagination']['pages'] = math.ceil(response['pagination']['count'] / limit) # round up to account for last page
+        else:
+            response['info']['error'] = f'No data found for symbol {symbol} from {start_date} to {end_date}'
+    except Exception as err:
+        response['info']['error'] = f'Error encountered when exec query: {err}'
 
     return response
 
@@ -98,12 +100,19 @@ def getStatistics():
     if not start_date or not end_date or not symbol:
         response['info']['error'] = 'start_date, end_date, and symbol are required parameters'
         return response
-    if not re.match(constants.DATE_PATTERN, start_date) or not re.match(constants.DATE_PATTERN, end_date) or end_date < start_date:
+    if not re.match(DATE_PATTERN, start_date) or not re.match(DATE_PATTERN, end_date) or end_date < start_date:
         response['info']['error'] = 'invalid start_date/end_date'
         return response
 
     # fetch data from DB
     try:
+        dbConn = mysql.connector.connect(
+            host = os.getenv('DB_HOST'),
+            user = os.getenv('DB_USER'),
+            database = os.getenv('DB_NAME'),
+            password = os.getenv('DB_PASSWORD')
+        )
+
         cursor = dbConn.cursor()
         # build and exec sql query
         sql = '''

@@ -1,11 +1,10 @@
+import os
 import requests
 import datetime
 import urllib.parse
 import mysql.connector
 import json
-
-# internal imports
-import constants
+import dotenv
 
 def getStockData(symbol: str, numDays: int) -> None:
     if not symbol or symbol == "" or numDays <= 0:
@@ -18,7 +17,7 @@ def getStockData(symbol: str, numDays: int) -> None:
         "function": "TIME_SERIES_DAILY",
         "outputsize": "compact",
         "symbol": symbol,
-        "apikey": constants.APIKEY
+        "apikey": os.getenv('API_KEY')
     }
     r = requests.get(apiUrl + urllib.parse.urlencode(apiParams))
     data = r.json()
@@ -64,14 +63,18 @@ def insertData(symbol: str, financialData: list) -> Exception:
         print(f'{len(financialData)} entries inserted for symbol {symbol}')
     except mysql.connector.Error as err:
         raise err
+    finally:
+        cursor.close()
+        dbConn.close()
 
 
 # scirpt
+dotenv.load_dotenv()
 dbConn = mysql.connector.connect(
-    host = constants.DBHOST,
-    user = constants.DBUSER,
-    database = constants.DBNAME,
-    password = constants.DBPASSWORD
+    host = os.getenv('DB_HOST'),
+    user = os.getenv('DB_USER'),
+    database = os.getenv('DB_NAME'),
+    password = os.getenv('DB_PASSWORD')
 )
 getStockData("IBM", 14)
 getStockData("AAPL", 14)

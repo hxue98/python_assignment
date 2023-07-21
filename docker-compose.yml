@@ -1,0 +1,24 @@
+version: '3.1'
+services:
+  db:
+    image: mysql:8
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    links:
+      - db
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    ports:
+      - "5000:5000"

@@ -2,6 +2,7 @@ import requests
 import datetime
 import urllib.parse
 import mysql.connector
+import json
 
 # internal imports
 import constants
@@ -32,11 +33,18 @@ def getStockData(symbol: str, numDays: int) -> None:
     twoWeeksAgo = (today - datetime.timedelta(days = 14)).isoformat()
 
     timeSeriesData = data["Time Series (Daily)"]
-    financialData = dict()
+    financialData = list()
     for _, k in enumerate(timeSeriesData):
         if k < twoWeeksAgo: break
         dailyData = list(timeSeriesData[k].values())
-        financialData[k] = (dailyData[0], dailyData[3], dailyData[4])
+        financialData.append({
+            "symbol": symbol,
+            "date": k,
+            "open_price": dailyData[0],
+            "close_price": dailyData[3],
+            "volume": dailyData[4]
+        })
+    print(json.dumps(financialData, indent=4))
 
     # insert data into financial_data table
     try:
@@ -45,7 +53,7 @@ def getStockData(symbol: str, numDays: int) -> None:
         print(f'Error encountered when inserting data: {err}')
 
 
-def insertData(symbol: str, financialData: dict) -> Exception:
+def insertData(symbol: str, financialData: list) -> Exception:
     try:
         # connect DB
         dbConn = mysql.connector.connect(
@@ -57,9 +65,10 @@ def insertData(symbol: str, financialData: dict) -> Exception:
 
         # use REPLACE instead of INSERT to make sure we do not insert duplicate entries
         mycursor = dbConn.cursor()
-        for k, v in financialData.items():
+        for data in financialData:
+            dataValues = list(data.values())
             sql = "REPLACE INTO financial_data (symbol, date, open_price, close_price, volume) VALUES (%s, %s, %s, %s, %s)"
-            val = (symbol, k, v[0], v[1], v[2])
+            val = (dataValues[0], dataValues[1], dataValues[2], dataValues[3], dataValues[4])
             mycursor.execute(sql, val)
         dbConn.commit()
         print(f'{len(financialData)} entries inserted for symbol {symbol}')

@@ -18,7 +18,7 @@ def getStockData(symbol: str, numDays: int) -> None:
         "function": "TIME_SERIES_DAILY",
         "outputsize": "compact",
         "symbol": symbol,
-        "apikey": constants.apiKey
+        "apikey": constants.APIKEY
     }
     r = requests.get(apiUrl + urllib.parse.urlencode(apiParams))
     data = r.json()
@@ -52,23 +52,14 @@ def getStockData(symbol: str, numDays: int) -> None:
     except Exception as err:
         print(f'Error encountered when inserting data: {err}')
 
-
 def insertData(symbol: str, financialData: list) -> Exception:
     try:
-        # connect DB
-        dbConn = mysql.connector.connect(
-            host = constants.dbHost,
-            user = constants.dbUser,
-            database = constants.dbName,
-            password = constants.dbPassword
-        )
-
         # use REPLACE instead of INSERT to make sure we do not insert duplicate entries
-        mycursor = dbConn.cursor()
+        cursor = dbConn.cursor()
         for data in financialData:
             dataValues = tuple(data.values())
             sql = "REPLACE INTO financial_data (symbol, date, open_price, close_price, volume) VALUES (%s, %s, %s, %s, %s)"
-            mycursor.execute(sql, dataValues)
+            cursor.execute(sql, dataValues)
         dbConn.commit()
         print(f'{len(financialData)} entries inserted for symbol {symbol}')
     except mysql.connector.Error as err:
@@ -76,5 +67,11 @@ def insertData(symbol: str, financialData: list) -> Exception:
 
 
 # scirpt
+dbConn = mysql.connector.connect(
+    host = constants.DBHOST,
+    user = constants.DBUSER,
+    database = constants.DBNAME,
+    password = constants.DBPASSWORD
+)
 getStockData("IBM", 14)
 getStockData("AAPL", 14)
